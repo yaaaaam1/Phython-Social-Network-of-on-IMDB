@@ -1,0 +1,105 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
+import re
+from collections import Counter
+from itertools import product,chain,combinations
+import networkx as nx
+from operator import itemgetter
+import string
+
+#use the data we've scraped on IMDB
+casts = pd.read_csv('ActCasts.csv')
+cast.head(5)
+
+# we need to replace characters not inclusive in people's names, such as "\n", "See full cast", etc.
+# We will use replace here
+casts = casts.dropna(how = 'all')
+replacelist = ["\n",'Directors:','Director:','Writers:','Writer:','Stars:','Star','See ','full ','cast',' & ','credits',
+              'crew','more ','credit','\xa0»','\|','    ','   ','  ','\d+',r"\(.*\)"]
+for element in replacelist:
+    casts = casts.replace(element,'',regex = True)
+casts = casts.astype(str)
+
+casts.head(5) # now we can see those names clearly without useless characters
+
+
+#Seperate each names depending on comma and put those names into a tuple list
+#Stars part
+namelist = []
+for names in casts['stars']:
+    name_in_one_line = names.split(',')
+    namelist.append(name_in_one_line)
+namelist = list(map(lambda l : [x.rstrip() for x in l], namelist))
+namelist = list(map(lambda l : [x.lstrip() for x in l], namelist))
+namelist
+name_nested = [list(combinations(l,2)) for l in namelist]
+name_tuple = list(chain.from_iterable(name_nested))
+# name_nested[:2]
+
+# Directors part
+dirlist = []
+for names in casts['director']:
+    name_in_one_line = names.split(',')
+    dirlist.append(name_in_one_line)
+    
+dirlist = list(map(lambda l : [x.rstrip() for x in l], dirlist))
+dirlist = list(map(lambda l : [x.lstrip() for x in l], dirlist))
+# dirlist
+dir_nested = [list(combinations(l,2)) for l in dirlist]
+dir_tuple = list(chain.from_iterable(dir_nested))
+# dirlist[:10]
+
+
+# Now let's start the social network part
+# (Codes are almost the same for directors and stars, so I only show one below)
+# Create graph
+defaultw = 2
+G = nx.Graph()
+
+# to see directors part -> use dir_tuple
+# to see stars part -> use name_tuple
+for nodes in dir_tuple:
+    n0 = nodes[0]
+    n1 = nodes[1]
+    if G.has_edge(n0,n1):
+        G[n0][n1]['weight'] += defaultw
+    else:
+        G.add_edge(n0,n1,weight = defaultw)
+# list(nx.connected_components(G))
+
+# We can choose nodes to be shown in the plot 
+# Because the plot would be too messy for too many nodes in the plot
+# I only chose the nodes with degree > 55 to be whown in the plot
+# Of course you can choose whether to remove any nodes in the plot
+remove = [node for node, degree in dict(G.degree()).items() if degree <=54]
+len(remove),len(G.nodes) # check how much nodes to be shown
+G.remove_nodes_from(remove) # Remove nodes
+len(G.nodes())
+d = dict(G.degree)
+
+# Showing the plot
+# You can adjust nodes' size , color, or whether to show labels on you own
+pos = nx.spring_layout(G,scale = 50)
+plt.figure(figsize = (8,8))
+n_color = np.asarray([G.degree[n] for n in G.nodes])
+nx.draw(G,pos,nodelist = d.keys(),node_size=[v*v*100 for v in d.values()],
+        node_color = n_color, alpha = 0.7,
+        with_labels = True)
+# nx.draw(G,pos,nodelist = d.keys(),node_color= n_color,alpha = 1,node_size = 100)
+plt.show()
+
+#CLustering of social network 
+from community import community_louvain
+communities =community_louvain.best_partition(G)
+pos = nx.spring_layout(G)  # compute graph layout
+plt.figure(figsize=(15,10))  # image is 8 x 8 inches
+plt.axis('off')
+nx.draw_networkx_labels(G,pos)
+nx.draw_networkx_nodes(G, pos, node_size=[v*v*100 for v in d.values()], alpha = 0.6, cmap=plt.cm.RdYlBu, 
+                       node_color=list(communities.values()))
+nx.draw_networkx_edges(G, pos,alpha=0.3)
+plt.show(G)
+
+
