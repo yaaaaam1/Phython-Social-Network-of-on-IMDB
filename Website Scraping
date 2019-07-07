@@ -1,0 +1,46 @@
+import requests
+from bs4 import BeautifulSoup
+import csv
+import random
+import time
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+#Choosing Action Movies
+links = pd.read_csv('links.csv')
+movies = pd.read_csv('movies.csv')
+movies.head(3) 
+
+
+# we can see that if we want to select Action Movies
+# we have to use "genres" column to select the rows containing "Action" 
+
+action = movies['genres'].str.contains(pat = 'Action')
+amovies  = movies[action].dropna(how='all')
+alinks = links.loc[movies['movieId']].dropna(how='all')
+
+
+# Open a new csv for the data we're going to scrape online
+
+casts = open('ActCasts.csv','w',encoding = 'utf-8')
+writer = csv.writer(casts)
+writer.writerow(['director','writers','stars'])
+i = 1
+for Id in alinks["imdbId"]:
+    Id = Id.zfill(7)
+    r = requests.get('https://www.imdb.com/title/tt'+Id+"/")
+    soup = BeautifulSoup(r.text,'html.parser')
+#     print(soup.prettify())
+    people = soup.select('.credit_summary_item')
+    data = []
+    for person in people:
+#         print(person.text)
+        data.append(person.text)
+    writer.writerow(data)
+    print("第",i,"篇 ") #Use print to check how much website we've scraped
+    i = i+1
+casts.close()
+print("finish!")
