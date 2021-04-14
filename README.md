@@ -1,4 +1,4 @@
-# Social-Network-of-Movie-Stars-on-IMDB
+# Python Social Network of Movie Stars on IMDB
 It's a social network analysis for stars and directors on IMDB website. 
 I am curious about if there’s a social network in the movie world. Thus, I want to do the analysis with real data online.
 I chose the movie and link data inside data below for analysis: 
